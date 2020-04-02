@@ -1,0 +1,5 @@
+[submodule "blt"]
+   path = blt
+   url = git@github.com:LLNL/blt.git
+   branch = release-v0.3.0
+
