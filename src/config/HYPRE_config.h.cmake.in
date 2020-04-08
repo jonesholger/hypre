@@ -92,3 +92,16 @@
 
 /* Define to 1 if using host memory only */
 #cmakedefine HYPRE_USING_HOST_MEMORY 1
+
+/* Compiling with NVCC for CUDA */
+#cmakedefine HYPRE_USING_CUDA
+
+/* Add NVTX regions */
+#cmakedefine ENABLE_NVTX_REGIONS
+
+/* Use RAJA for loop abstractions */
+#cmakedefine HYPRE_USING_RAJA
+
+/* Use Umpire for memory management */
+#cmakedefine HAVE_UMPIRE
+

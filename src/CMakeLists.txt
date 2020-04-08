@@ -20,7 +20,52 @@ set (HYPRE_SRCDIR  "${PROJECT_SOURCE_DIR}")
 
 project (hypre
   VERSION ${HYPRE_VERSION}
-  LANGUAGES C)
+  LANGUAGES C CXX)
+
+
+
+#------------------------------------------------------------------------------
+# Initialize BLT build system
+#------------------------------------------------------------------------------
+if (DEFINED BLT_SOURCE_DIR)
+
+    # Support a shared BLT outside of the repository if given a BLT_SOURCE_DIR
+    if (NOT EXISTS ${BLT_SOURCE_DIR}/SetupBLT.cmake)
+        message(FATAL_ERROR "Cannot find SetupBLT.cmake in [${BLT_SOURCE_DIR}]")
+    endif()
+
+else()
+
+    # Use internal 'blt' submodule path if BLT_SOURCE_DIR not provided
+    set(BLT_SOURCE_DIR "${PROJECT_SOURCE_DIR}/blt" CACHE PATH "")
+    if (NOT EXISTS ${BLT_SOURCE_DIR}/SetupBLT.cmake)
+         message(FATAL_ERROR "The BLT submodule is not present. \
+                  If in the git repository, please run the following commands:\n \
+                  git submodule init\n \
+                  git submodule update")
+    endif()
+
+endif()
+
+message(STATUS "BLT : ${BLT_SOURCE_DIR} ")
+# BLT Options need to be set in the CACHE
+set(ENABLE_FORTRAN Off CACHE Bool "Enable Fortran")
+set(ENABLE_OPENMP On CACHE Bool "Enable OpenMP")
+set(ENABLE_CUDA Off CACHE Bool "Enable CUDA")
+set(ENABLE_MPI On CACHE Bool "Enable MPI.")
+set(ENABLE_TESTS On CACHE Bool "Enable Tests.")
+set(ENABLE_DOCS Off CACHE Bool "Enable Docs.")
+set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
+set(gtest_disable_pthreads ON CACHE BOOL "")
+option(ENABLE_UMPIRE "Enable UMPIRE memory management" On)
+option(ENABLE_RAJA "Enable RAJA" On)
+
+include(${BLT_SOURCE_DIR}/SetupBLT.cmake)
+
+include_directories(${CMAKE_BINARY_DIR}/include)
+
+include(cmake/CMakeBasics.cmake)
+
 
 if (${hypre_SOURCE_DIR} STREQUAL ${hypre_BINARY_DIR})
   message(FATAL_ERROR "In-place build not allowed! Please use a separate build directory. See the Users Manual or INSTALL file for details.")
@@ -250,7 +295,8 @@ endif ()
 if (NOT HYPRE_SEQUENTIAL)
   find_program (MPIEXEC_EXECUTABLE NAMES mpiexec mpirun)
   find_package (MPI REQUIRED)
-  target_link_libraries (HYPRE PUBLIC MPI::MPI_C)
+  #  target_link_libraries (HYPRE PUBLIC MPI::MPI_C)
+  target_link_libraries (HYPRE PUBLIC MPI::MPI_CXX)
 endif (NOT HYPRE_SEQUENTIAL)
 
 # Set OpenMP compile flags
@@ -258,6 +304,10 @@ if (HYPRE_USING_OPENMP)
   find_package (OpenMP REQUIRED)
   target_link_libraries (HYPRE PUBLIC OpenMP::OpenMP_C)
 endif (HYPRE_USING_OPENMP)
+
+if (HYPRE_USING_RAJA)
+   target_link_libraries(HYPRE PUBLIC RAJA)
+endif()
 
 if (MSVC)
   target_compile_definitions(HYPRE PRIVATE _CRT_SECURE_NO_WARNINGS)
@@ -332,5 +382,6 @@ export (EXPORT HYPRETargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/HYPRETargets.cmake"
   NAMESPACE HYPRE::
   )
+
 
 export (PACKAGE HYPRE)
