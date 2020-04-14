@@ -23,10 +23,12 @@ set(PILUT_SRCS
   util.c
 )
 
-target_sources(HYPRE
-  PRIVATE ${PILUT_SRCS}
-          ${PILUT_HDRS}
-  )
+#target_sources(HYPRE
+#  PRIVATE ${PILUT_SRCS}
+#          ${PILUT_HDRS}
+#  )
 
 convert_filenames_to_full_paths(PILUT_HDRS)
+convert_filenames_to_full_paths(PILUT_SRCS)
 set(HDRS ${HDRS} ${PILUT_HDRS} PARENT_SCOPE)
+set(DSRCS ${DSRCS} ${PILUT_SRCS} PARENT_SCOPE)

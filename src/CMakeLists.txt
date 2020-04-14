@@ -49,23 +49,22 @@ endif()
 
 message(STATUS "BLT : ${BLT_SOURCE_DIR} ")
 # BLT Options need to be set in the CACHE
-set(ENABLE_FORTRAN Off CACHE Bool "Enable Fortran")
-set(ENABLE_OPENMP On CACHE Bool "Enable OpenMP")
-set(ENABLE_CUDA Off CACHE Bool "Enable CUDA")
-set(ENABLE_MPI On CACHE Bool "Enable MPI.")
-set(ENABLE_TESTS On CACHE Bool "Enable Tests.")
-set(ENABLE_DOCS Off CACHE Bool "Enable Docs.")
+set(ENABLE_FORTRAN Off CACHE STRING "Enable Fortran")
+set(ENABLE_OPENMP On CACHE STRING "Enable OpenMP")
+set(ENABLE_CUDA Off CACHE STRING "Enable CUDA")
+set(ENABLE_MPI On CACHE STRING "Enable MPI.")
+set(ENABLE_TESTS On CACHE STRING "Enable Tests.")
+set(ENABLE_DOCS Off CACHE STRING "Enable Docs.")
 set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
-set(gtest_disable_pthreads ON CACHE BOOL "")
-option(ENABLE_UMPIRE "Enable UMPIRE memory management" On)
-option(ENABLE_RAJA "Enable RAJA" On)
+set(gtest_disable_pthreads ON CACHE STRING "")
+option(ENABLE_UMPIRE "Enable UMPIRE memory management" Off)
+option(ENABLE_RAJA "Enable RAJA" Off)
 
 include(${BLT_SOURCE_DIR}/SetupBLT.cmake)
 
 include_directories(${CMAKE_BINARY_DIR}/include)
 
 include(cmake/CMakeBasics.cmake)
-
 
 if (${hypre_SOURCE_DIR} STREQUAL ${hypre_BINARY_DIR})
   message(FATAL_ERROR "In-place build not allowed! Please use a separate build directory. See the Users Manual or INSTALL file for details.")
@@ -201,10 +200,9 @@ if (HYPRE_SEQUENTIAL)
   set (HYPRE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 endif ()
 
-add_library (HYPRE)
-
 # Headers and sources
 set (HYPRE_HEADERS "")
+set (HYPRE_SOURCES "")
 
 # Headers and sources: .
 set(HYPRE_MAIN_HEADERS
@@ -212,10 +210,28 @@ set(HYPRE_MAIN_HEADERS
   HYPREf.h
   HYPRE.h
 )
-target_sources(HYPRE
-  PRIVATE ${HYPRE_MAIN_HEADERS}
-  )
+#target_sources(HYPRE
+#  PRIVATE ${HYPRE_MAIN_HEADERS}
+#  )
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HYPRE_MAIN_HEADERS})
+
+# Headers and sources: remaining subdirectories
+set(HYPRE_DIRS utilities multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
+foreach(DIR IN LISTS HYPRE_DIRS)
+  add_subdirectory(${DIR})
+  #target_include_directories(HYPRE PUBLIC
+  #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
+endforeach()
+
+
+#defer to BLT 
+#add_library (HYPRE)
+
+blt_add_library( NAME HYPRE
+   SOURCES ${HYPRE_SOURCES}
+  HEADERS ${HYPRE_HEADERS}
+  DEPENDS_ON ${HYPRE_DEPENDS})
+
 
 # Headers and sources: blas
 if (HYPRE_USING_HYPRE_BLAS)
@@ -264,7 +280,7 @@ endif()
 # Headers and sources: remaining subdirectories
 set(HYPRE_DIRS utilities multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
 foreach(DIR IN LISTS HYPRE_DIRS)
-  add_subdirectory(${DIR})
+   #add_subdirectory(${DIR})
   target_include_directories(HYPRE PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
 endforeach()
@@ -385,3 +401,61 @@ export (EXPORT HYPRETargets
 
 
 export (PACKAGE HYPRE)
+
+
+
+#cmake_print_properties(TARGETS bout++ INTERFACE_INCLUDE_DIRECTORIES)
+# Get all propreties that cmake supports
+execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
+
+# Convert command output into a CMake list
+STRING(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+STRING(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
+# Fix https://stackoverflow.com/questions/32197663/how-can-i-remove-the-the-location-property-may-not-be-read-from-target-error-i
+list(FILTER CMAKE_PROPERTY_LIST EXCLUDE REGEX "^LOCATION$|^LOCATION_|_LOCATION$")
+# For some reason, "TYPE" shows up twice - others might too?
+list(REMOVE_DUPLICATES CMAKE_PROPERTY_LIST)
+
+# build whitelist by filtering down from CMAKE_PROPERTY_LIST in case cmake is
+# a different version, and one of our hardcoded whitelisted properties
+# doesn't exist!
+unset(CMAKE_WHITELISTED_PROPERTY_LIST)
+foreach(prop ${CMAKE_PROPERTY_LIST})
+    if(prop MATCHES "^(INTERFACE|[_a-z]|IMPORTED_LIBNAME_|MAP_IMPORTED_CONFIG_)|^(COMPATIBLE_INTERFACE_(BOOL|NUMBER_MAX|NUMBER_MIN|STRING)|EXPORT_NAME|IMPORTED(_GLOBAL|_CONFIGURATIONS|_LIBNAME)?|NAME|TYPE|NO_SYSTEM_FROM_IMPORTED)$")
+        list(APPEND CMAKE_WHITELISTED_PROPERTY_LIST ${prop})
+    endif()
+endforeach(prop)
+
+function(print_properties)
+    message ("CMAKE_PROPERTY_LIST = ${CMAKE_PROPERTY_LIST}")
+endfunction(print_properties)
+
+function(print_whitelisted_properties)
+    message ("CMAKE_WHITELISTED_PROPERTY_LIST = ${CMAKE_WHITELISTED_PROPERTY_LIST}")
+endfunction(print_whitelisted_properties)
+
+function(print_target_properties tgt)
+    if(NOT TARGET ${tgt})
+      message("There is no target named '${tgt}'")
+      return()
+    endif()
+
+    get_target_property(target_type ${tgt} TYPE)
+    if(target_type STREQUAL "INTERFACE_LIBRARY")
+        set(PROP_LIST ${CMAKE_WHITELISTED_PROPERTY_LIST})
+    else()
+        set(PROP_LIST ${CMAKE_PROPERTY_LIST})
+    endif()
+
+    foreach (prop ${PROP_LIST})
+        string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" prop ${prop})
+        # message ("Checking ${prop}")
+        get_property(propval TARGET ${tgt} PROPERTY ${prop} SET)
+        if (propval)
+            get_target_property(propval ${tgt} ${prop})
+            message ("${tgt} ${prop} = ${propval}")
+        endif()
+    endforeach(prop)
+endfunction(print_target_properties)
+
+print_target_properties(HYPRE)
