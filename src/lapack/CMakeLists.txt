@@ -3,8 +3,13 @@
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-target_sources(HYPRE
-  PRIVATE
+set(HDRS
+   _hypre_lapack.h
+)
+
+set(SRCS
+   #target_sources(HYPRE
+   #  PRIVATE
   dbdsqr.c
   dgebd2.c
   dgebrd.c
@@ -86,3 +91,8 @@ if (MSVC)
 else ()
   set_source_files_properties (dlamch.c PROPERTIES COMPILE_FLAGS -O0)
 endif ()
+
+convert_filenames_to_full_paths(HDRS)
+convert_filenames_to_full_paths(SRCS)
+set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
+set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)

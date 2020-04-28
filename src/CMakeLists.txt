@@ -20,7 +20,7 @@ set (HYPRE_SRCDIR  "${PROJECT_SOURCE_DIR}")
 
 project (hypre
   VERSION ${HYPRE_VERSION}
-  LANGUAGES C CXX)
+    LANGUAGES C CXX)
 
 
 
@@ -216,13 +216,80 @@ set(HYPRE_MAIN_HEADERS
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HYPRE_MAIN_HEADERS})
 
 # Headers and sources: remaining subdirectories
-set(HYPRE_DIRS utilities multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
+set(HYPRE_DIRS utilities blas lapack multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
 foreach(DIR IN LISTS HYPRE_DIRS)
   add_subdirectory(${DIR})
   #target_include_directories(HYPRE PUBLIC
   #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
 endforeach()
 
+
+set (HYPRE_DEPENDS "")
+if (ENABLE_OPENMP)
+   list(APPEND HYPRE_DEPENDS openmp)
+endif ()
+
+if (ENABLE_CUDA)
+   set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
+
+   if (ENABLE_NVTX_REGIONS)
+      find_package(CUDA REQUIRED)
+
+      find_library(NVTX_LIBRARY
+         NAME libnvToolsExt.so
+         PATHS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 ${CUDA_TOOLKIT_ROOT_DIR}/lib)
+
+      message(STATUS "NVidia tools extension library found in " ${NVTX_LIBRARY})
+      blt_register_library(
+      NAME nvToolsExt
+      LIBRARIES ${NVTX_LIBRARY})
+
+      list(APPEND HYPRE_DEPENDS nvToolsExt)
+      message(STATUS "Enable NVTX Regions Detected")
+   endif ()
+   if (CUDA_FOUND)
+      set (HAVE_CUDA True)
+   endif ()
+   list(APPEND HYPRE_DEPENDS cuda)
+endif()
+
+# UMPIRE
+if (ENABLE_UMPIRE)
+  find_package(umpire REQUIRED)
+
+  set (HAVE_UMPIRE True)
+
+  blt_register_library(
+    NAME umpire
+    INCLUDES ${UMPIRE_INCLUDE_DIRS}
+    LIBRARIES umpire)
+ list(APPEND HYPRE_DEPENDS umpire)
+endif ()
+
+# RAJA
+if (ENABLE_RAJA)
+  find_package(RAJA REQUIRED)
+
+  set (raja_depends_on)
+  if (ENABLE_CUDA)
+    list (APPEND raja_depends cuda)
+  endif ()
+
+  if (ENABLE_OPENMP)
+    list (APPEND raja_depends openmp)
+  endif ()
+
+  if (RAJA_FOUND)
+    set (HAVE_RAJA True)
+
+    blt_register_library(
+      NAME RAJA
+      INCLUDES ${RAJA_INCLUDE_DIR}
+      LIBRARIES RAJA
+      DEPENDS_ON ${raja_depends})
+  endif ()
+  list(APPEND HYPRE_DEPENDS RAJA)
+endif ()
 
 #defer to BLT 
 #add_library (HYPRE)
@@ -232,25 +299,25 @@ blt_add_library( NAME HYPRE
   HEADERS ${HYPRE_HEADERS}
   DEPENDS_ON ${HYPRE_DEPENDS})
 
-
+# Temporarily just default to internal blas use and setup blas like other hypre dirs; same with lapack
 # Headers and sources: blas
-if (HYPRE_USING_HYPRE_BLAS)
-  add_subdirectory(blas)
-else()
+#if (HYPRE_USING_HYPRE_BLAS)
+#  add_subdirectory(blas)
+#else()
   # Find system blas
-  find_package(BLAS REQUIRED)
-  target_link_libraries(HYPRE PUBLIC "${BLAS_LIBRARIES}")
-  target_compile_definitions(HYPRE PUBLIC "USE_VENDOR_BLAS")
-endif()
+  #  find_package(BLAS REQUIRED)
+  #  target_link_libraries(HYPRE PUBLIC "${BLAS_LIBRARIES}")
+  #  target_compile_definitions(HYPRE PUBLIC "USE_VENDOR_BLAS")
+  #endif()
 
 # Headers and sources: lapack
-if (HYPRE_USING_HYPRE_LAPACK)
-  add_subdirectory(lapack)
-else()
+#if (HYPRE_USING_HYPRE_LAPACK)
+#  add_subdirectory(lapack)
+#else()
   # Find system lapack
-  find_package(LAPACK REQUIRED)
-  target_link_libraries(HYPRE PUBLIC "${LAPACK_LIBRARIES}")
-endif()
+  #  find_package(LAPACK REQUIRED)
+  #  target_link_libraries(HYPRE PUBLIC "${LAPACK_LIBRARIES}")
+  #endif()
 
 # Find DSUPERLU, if requested
 if (HYPRE_USING_DSUPERLU)

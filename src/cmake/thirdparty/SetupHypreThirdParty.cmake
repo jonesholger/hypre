@@ -27,7 +27,9 @@ endif ()
 # CUDA is setup by BLT
 if (ENABLE_CUDA)
   if (CUDA_FOUND)
+     message(STATUS "CUDA FOUND")
      set (HYPRE_USING_CUDA True)
+     set (HYPRE_USING_UNIFIED_MEMORY True)
   endif ()
 endif ()
 
