@@ -115,6 +115,17 @@ if (HYPRE_USING_DSUPERLU)
 endif()  
 
 
+if(HAVE_CUDA)
+   set(SRCS ${SRCS}
+      par_coarsen_device.c
+      par_indepset_device.c
+      par_interp_device.c
+      par_interp_trunc_device.c
+      par_lr_interp_device.c
+      par_strength_device.c
+      )
+endif ()
+
 #target_sources(HYPRE
 #  PRIVATE ${SRCS}
 #          ${HDRS}

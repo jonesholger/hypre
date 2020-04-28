@@ -200,29 +200,6 @@ if (HYPRE_SEQUENTIAL)
   set (HYPRE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 endif ()
 
-# Headers and sources
-set (HYPRE_HEADERS "")
-set (HYPRE_SOURCES "")
-
-# Headers and sources: .
-set(HYPRE_MAIN_HEADERS
-  ${CMAKE_CURRENT_BINARY_DIR}/HYPRE_config.h
-  HYPREf.h
-  HYPRE.h
-)
-#target_sources(HYPRE
-#  PRIVATE ${HYPRE_MAIN_HEADERS}
-#  )
-set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HYPRE_MAIN_HEADERS})
-
-# Headers and sources: remaining subdirectories
-set(HYPRE_DIRS utilities blas lapack multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
-foreach(DIR IN LISTS HYPRE_DIRS)
-  add_subdirectory(${DIR})
-  #target_include_directories(HYPRE PUBLIC
-  #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
-endforeach()
-
 
 set (HYPRE_DEPENDS "")
 if (ENABLE_OPENMP)
@@ -293,6 +270,30 @@ endif ()
 
 #defer to BLT 
 #add_library (HYPRE)
+
+# Headers and sources
+set (HYPRE_HEADERS "")
+set (HYPRE_SOURCES "")
+
+# Headers and sources: .
+set(HYPRE_MAIN_HEADERS
+  ${CMAKE_CURRENT_BINARY_DIR}/HYPRE_config.h
+  HYPREf.h
+  HYPRE.h
+)
+#target_sources(HYPRE
+#  PRIVATE ${HYPRE_MAIN_HEADERS}
+#  )
+set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HYPRE_MAIN_HEADERS})
+
+# Headers and sources: remaining subdirectories
+set(HYPRE_DIRS utilities blas lapack multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
+foreach(DIR IN LISTS HYPRE_DIRS)
+  add_subdirectory(${DIR})
+  #target_include_directories(HYPRE PUBLIC
+  #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
+endforeach()
+
 
 blt_add_library( NAME HYPRE
    SOURCES ${HYPRE_SOURCES}

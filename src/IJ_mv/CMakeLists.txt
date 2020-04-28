@@ -28,6 +28,12 @@ set(SRCS
 #          ${HDRS}
 #  )
 
+if(HAVE_CUDA)
+   set(SRCS ${SRCS}
+      IJMatrix_parcsr_device.c
+      IJVector_parcsr_device.c)
+endif ()
+
 convert_filenames_to_full_paths(HDRS)
 convert_filenames_to_full_paths(SRCS)
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)

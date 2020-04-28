@@ -39,6 +39,19 @@ set(SRCS
   timing.c
 )
 
+if(HAVE_CUDA)
+   set(HDRS ${HDRS}
+      hypre_cub_allocator.h
+      hypre_cuda_reducer.h
+      hypre_cuda_utils.h
+      protos.h)
+
+   set(SRCS ${SRCS}
+      hypre_cuda_utils.c
+      hypre_nvtx.c)
+endif ()
+
+
 #target_sources(HYPRE
 #  PRIVATE ${SRCS}
 #          ${HDRS}

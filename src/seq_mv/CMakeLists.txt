@@ -29,6 +29,24 @@ set(SRCS
 #          ${HDRS}
 #  )
 
+if(HAVE_CUDA)
+   set(HDRS ${HDRS}
+      csr_spgemm_device.h
+      )
+   set(SRCS ${SRCS}
+      csr_matop_device.c
+      csr_spadd_device.c
+      csr_spgemm_device.c
+      csr_sptrans_device.c
+      csr_spgemm_device_attempt.c
+      csr_spgemm_device_confident.c
+      csr_spgemm_device_cusparse.c
+      csr_spgemm_device_rowbound.c
+      csr_spgemm_device_rowest.c
+      csr_spgemm_device_util.c
+      )
+endif ()
+
 convert_filenames_to_full_paths(HDRS)
 convert_filenames_to_full_paths(SRCS)
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
