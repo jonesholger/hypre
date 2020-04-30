@@ -9,71 +9,67 @@ if (MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif ()
 
-#set(TEST_SRCS
-#  ij.c
-#  sstruct.c
-#  struct.c
-#  ams_driver.c
-#  maxwell_unscaled.c
-#  struct_migrate.c
-#  sstruct_fac.c
-#  ij_mv.c
-#)
-
-# add_hypre_executables(TEST_SRCS)
-cmake_minimum_required(VERSION 3.13)
-
-#project(test_laplacexy_hypre LANGUAGES CXX C)
-
-set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
-
-set(test_ij_hypre_sources
-   ij.c
+set(TEST_SRCS
+  ij.c
+  sstruct.c
+  struct.c
+  ams_driver.c
+  maxwell_unscaled.c
+  struct_migrate.c
+  sstruct_fac.c
+  ij_mv.c
 )
 
-set(test_ij_hypre_depends HYPRE)
-
+# add_hypre_executables(TEST_SRCS)   
+cmake_minimum_required(VERSION 3.13)
+set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
 set(HYPRE_USING_CUDA_DEFINE "")
 set(HYPRE_USING_CUBLAS_DEFINE "")
 set(MEMORY_DEFINE "")
+set(CUDA_INCLUDE_DIR "")
+set(depends HYPRE)
+
 if(HAVE_CUDA)
-   list(APPEND test_ij_hypre_depends cuda)
+   list(APPEND depends cuda)
+   set(CUDA_INCLUDE_DIR   ${CUDA_TOOLKIT_ROOT_DIR}/include)
+   # we'll pickup defines from the parent scope; but external apps will need these
    set(HYPRE_USING_CUDA_DEFINE "HYPRE_USING_CUDA")
    set(MEMORY_DEFINE "HYPRE_USING_UNIFIED_MEMORY")
-   set(HYPRE_USING_CUBLAS_DEFINE "HYPRE_USING_CUBLAS")
 endif ()
 
-message(STATUS "CUDA_TOOLKIT_ROOT_DIR : ${CUDA_TOOLKIT_ROOT_DIR}")
-message(STATUS "test_ij_hypre_depends: ${test_ij_hypre_depends}")
-blt_add_executable(
-   NAME test_ij_hypre
-   SOURCES ${test_ij_hypre_sources}
-   INCLUDES 
-     ${PROJECT_SOURCE_DIR}
-     ${CUDA_TOOLKIT_ROOT_DIR}/include
-   DEFINES 
-      ${HYPRE_USING_CUDA_DEFINE}
-      ${HYPRE_USING_CUBLAS_DEFINE}
-      ${MEMORY_DEFINE}
-   DEPENDS_ON
-     ${test_ij_hypre_depends})
+message(STATUS "test apps depend on: ${depends}")
 
-# Headers and sources: remaining subdirectories
-set(HYPRE_DIRS utilities multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
-foreach(DIR IN LISTS HYPRE_DIRS)
-   #add_subdirectory(${DIR})
-  target_include_directories(test_ij_hypre PUBLIC
-     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/${DIR}>)
-endforeach()
+# do the following until we establish a macro call
+foreach(SRC IN LISTS TEST_SRCS)
+   string(REPLACE ".c" "" EXE_NAME ${SRC})
+
+   blt_add_executable(
+      NAME ${EXE_NAME}
+      SOURCES ${SRC}
+      INCLUDES 
+        ${PROJECT_SOURCE_DIR}
+        ${CUDA_INCLUDE_DIR}
+        #  defines are already established in parent scope
+        #  just a reminder that external apps will need these
+        #      DEFINES 
+        # ${HYPRE_USING_CUDA_DEFINE}
+        # ${HYPRE_USING_CUBLAS_DEFINE}
+        # ${MEMORY_DEFINE}
+      DEPENDS_ON
+        ${depends})
+
+   if(HAVE_CUDA)
+      target_link_libraries(
+         ${EXE_NAME} PRIVATE 
+         ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcusparse_static.a
+         ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand_static.a
+         ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libculibos.a
+         ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas_static.a
+         ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublasLt_static.a
+      )
+   endif ()
+endforeach()      
 
 
-target_link_libraries(
-   test_ij_hypre PUBLIC 
-   ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcusparse_static.a
-   ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand_static.a
-   ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libculibos.a
-   ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas_static.a
-   ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublasLt_static.a
-)
 
  

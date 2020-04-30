@@ -526,4 +526,4 @@ function(print_target_properties tgt)
     endforeach(prop)
 endfunction(print_target_properties)
 
-print_target_properties(HYPRE)
+#print_target_properties(HYPRE)
