@@ -51,10 +51,10 @@ foreach(SRC IN LISTS TEST_SRCS)
         ${CUDA_INCLUDE_DIR}
         #  defines are already established in parent scope
         #  just a reminder that external apps will need these
-        #      DEFINES 
-        # ${HYPRE_USING_CUDA_DEFINE}
-        # ${HYPRE_USING_CUBLAS_DEFINE}
-        # ${MEMORY_DEFINE}
+        #DEFINES 
+        #${HYPRE_USING_CUDA_DEFINE}
+        #${HYPRE_USING_CUBLAS_DEFINE}
+        #${MEMORY_DEFINE}
       DEPENDS_ON
         ${depends})
 
@@ -68,8 +68,29 @@ foreach(SRC IN LISTS TEST_SRCS)
          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublasLt_static.a
       )
    endif ()
+
+   #otherwise we're building with mpicc so we need -lm
+   if(NOT HAVE_CUDA)
+      target_link_libraries(
+         ${EXE_NAME} PRIVATE
+         m)
+   endif ()   
 endforeach()      
 
+# later create macros for each executable, 
+# wrapped in switchyard, invoked in foreach above
+blt_add_test(NAME ij_1
+   COMMAND ij -pmis -Pmx 0 -rlx 0 -xisone
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   NUM_MPI_TASKS 1)
 
+blt_add_test(NAME ij_2
+   COMMAND ij -P 1 1 2 -pmis1 -Pmx 0 -rlx 0 -xisone
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   NUM_MPI_TASKS 2)
 
- 
+blt_add_test(NAME ij_3
+   COMMAND ij -P 1 1 3 -pmis1 -Pmx 0 -rlx 0 -xisone
+   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+   NUM_MPI_TASKS 3)
+

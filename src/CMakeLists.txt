@@ -113,7 +113,11 @@ option(HYPRE_PRINT_ERRORS            "Print HYPRE errors" OFF)
 option(HYPRE_TIMING                  "Use HYPRE timing routines" OFF)
 option(HYPRE_BUILD_EXAMPLES          "Build examples" OFF)
 option(HYPRE_BUILD_TESTS             "Build tests" OFF)
-option(HYPRE_USING_HOST_MEMORY       "Use host memory" ON)
+
+if(NOT ENABLE_CUDA)
+   option(HYPRE_USING_HOST_MEMORY       "Use host memory" ON)
+endif ()
+
 
 option(TPL_DSUPERLU_LIBRARIES        "List of absolute paths to SuperLU_Dist link libraries [].")
 option(TPL_DSUPERLU_INCLUDE_DIRS     "List of absolute paths to SuperLU_Dist include directories [].")
@@ -226,9 +230,11 @@ if (ENABLE_CUDA)
    endif ()
    if (CUDA_FOUND)
       set (HAVE_CUDA True)
+
    endif ()
    list(APPEND HYPRE_DEPENDS cuda)
 endif()
+
 
 # UMPIRE
 if (ENABLE_UMPIRE)
