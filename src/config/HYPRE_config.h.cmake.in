@@ -90,18 +90,57 @@
 /* As F77_FUNC, but for C identifiers containing underscores. */
 #define HYPRE_F77_FUNC_(name,NAME) name ## __
 
-/* Define to 1 if using host memory only */
-#cmakedefine HYPRE_USING_HOST_MEMORY 1
+/* Define if using host memory only */
+#cmakedefine HYPRE_USING_HOST_MEMORY 
 
-/* Compiling with NVCC for CUDA */
-#cmakedefine HYPRE_USING_CUDA
+/* Define if using device memory without UM */
+#cmakedefine HYPRE_USING_DEVICE_MEMORY
+
+/* Define if using unified memory */
 #cmakedefine HYPRE_USING_UNIFIED_MEMORY
-/* Add NVTX regions */
-#cmakedefine ENABLE_NVTX_REGIONS
 
-/* Use RAJA for loop abstractions */
+/*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ * EXECUTION
+ *- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+/* Define if executing on device with CUDA */
+#cmakedefine HYPRE_USING_CUDA
+
+/* Define if executing on device with OpenMP  */
+#cmakedefine HYPRE_USING_DEVICE_OPENMP
+
+/* Define if using OpenMP on device [target alloc version] */
+#cmakedefine HYPRE_DEVICE_OPENMP_ALLOC
+
+/* Define if using OpenMP on device [target mapped version] */
+#cmakedefine HYPRE_DEVICE_OPENMP_MAPPED
+
+/* Define if strictly checking OpenMP offload directives */
+#cmakedefine HYPRE_DEVICE_OPENMP_CHECK
+
+/* Define if executing on host/device with RAJA */
 #cmakedefine HYPRE_USING_RAJA
 
-/* Use Umpire for memory management */
-#cmakedefine HAVE_UMPIRE
+/* Define if executing on host/device with KOKKOS */
+#cmakedefine HYPRE_USING_KOKKOS
+
+/* Define if using NVIDIA Tools Extension (NVTX) */
+#cmakedefine HYPRE_USING_NVTX
+
+/* Define if using cuSPARSE */
+#cmakedefine HYPRE_USING_CUSPARSE
+
+/* Define if using CUB */
+#cmakedefine HYPRE_USING_CUB_ALLOCATOR
+
+/* Define if using cuBLAS */
+#cmakedefine HYPRE_USING_CUBLAS
+
+/* Define if using cuRAND */
+#cmakedefine HYPRE_USING_CURAND
+
+/* Define if using GPU aware MPI */
+#cmakedefine HYPRE_WITH_GPU_AWARE_MPI
+
+/* Define if using CUDA streams */
+#cmakedefine HYPRE_USING_CUDA_STREAMS
 

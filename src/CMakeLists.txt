@@ -57,7 +57,6 @@ set(ENABLE_TESTS On CACHE STRING "Enable Tests.")
 set(ENABLE_DOCS Off CACHE STRING "Enable Docs.")
 set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
 set(gtest_disable_pthreads ON CACHE STRING "")
-option(ENABLE_UMPIRE "Enable UMPIRE memory management" Off)
 option(ENABLE_RAJA "Enable RAJA" Off)
 
 include(${BLT_SOURCE_DIR}/SetupBLT.cmake)
@@ -206,14 +205,21 @@ endif ()
 
 
 set (HYPRE_DEPENDS "")
+
+if(ENABLE_MPI)
+   set(HYPRE_HAVE_MPI True)
+   list(APPEND HYPRE_DEPENDS mpi)
+endif ()
+
 if (ENABLE_OPENMP)
+   set(HYPRE_USING_OPENMP True)
    list(APPEND HYPRE_DEPENDS openmp)
 endif ()
 
 if (ENABLE_CUDA)
-   set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
+   #set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
 
-   if (ENABLE_NVTX_REGIONS)
+   if (HYPRE_USING_NVTX)
       find_package(CUDA REQUIRED)
 
       find_library(NVTX_LIBRARY
@@ -228,32 +234,26 @@ if (ENABLE_CUDA)
       list(APPEND HYPRE_DEPENDS nvToolsExt)
       message(STATUS "Enable NVTX Regions Detected")
    endif ()
-   if (CUDA_FOUND)
-      set (HAVE_CUDA True)
 
+   if (CUDA_FOUND)
+      set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
+      set (HYPRE_USING_CUDA True)
+      # setup defaults until we fully define configuration matrix
+      set(HYPRE_USING_UNIFIED_MEMORY True)
+      set(HYPRE_USING_CUSPARSE True)
+      set(HYPRE_USING_CURAND True) 
+      set(HYPRE_USING_CUBLAS False)
+      set(HYPRE_USING_CUDA_STREAMS False)
+      list(APPEND HYPRE_DEPENDS cuda)
    endif ()
-   list(APPEND HYPRE_DEPENDS cuda)
 endif()
 
-
-# UMPIRE
-if (ENABLE_UMPIRE)
-  find_package(umpire REQUIRED)
-
-  set (HAVE_UMPIRE True)
-
-  blt_register_library(
-    NAME umpire
-    INCLUDES ${UMPIRE_INCLUDE_DIRS}
-    LIBRARIES umpire)
- list(APPEND HYPRE_DEPENDS umpire)
-endif ()
 
 # RAJA
 if (ENABLE_RAJA)
   find_package(RAJA REQUIRED)
 
-  set (raja_depends_on)
+  set (raja_depends "")
   if (ENABLE_CUDA)
     list (APPEND raja_depends cuda)
   endif ()
@@ -263,7 +263,7 @@ if (ENABLE_RAJA)
   endif ()
 
   if (RAJA_FOUND)
-    set (HAVE_RAJA True)
+     set (HYPRE_USING_RAJA True)
 
     blt_register_library(
       NAME RAJA
@@ -300,7 +300,7 @@ foreach(DIR IN LISTS HYPRE_DIRS)
   #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
 endforeach()
 
-
+message(STATUS "HYPRE_DEPENDS: ${HYPRE_DEPENDS}")
 blt_add_library( NAME HYPRE
    SOURCES ${HYPRE_SOURCES}
   HEADERS ${HYPRE_HEADERS}
@@ -381,23 +381,26 @@ else ()
   set (BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
 endif ()
 
+# Handled by BLT
 # Set MPI compile flags
-if (NOT HYPRE_SEQUENTIAL)
-  find_program (MPIEXEC_EXECUTABLE NAMES mpiexec mpirun)
-  find_package (MPI REQUIRED)
+#if (NOT HYPRE_SEQUENTIAL)
+#  find_program (MPIEXEC_EXECUTABLE NAMES mpiexec mpirun)
+#  find_package (MPI REQUIRED)
   #  target_link_libraries (HYPRE PUBLIC MPI::MPI_C)
-  target_link_libraries (HYPRE PUBLIC MPI::MPI_CXX)
-endif (NOT HYPRE_SEQUENTIAL)
+  #  target_link_libraries (HYPRE PUBLIC MPI::MPI_CXX)
+  #endif (NOT HYPRE_SEQUENTIAL)
 
+# Handled by BLT  
 # Set OpenMP compile flags
-if (HYPRE_USING_OPENMP)
-  find_package (OpenMP REQUIRED)
-  target_link_libraries (HYPRE PUBLIC OpenMP::OpenMP_C)
-endif (HYPRE_USING_OPENMP)
+#if (HYPRE_USING_OPENMP)
+#  find_package (OpenMP REQUIRED)
+#  target_link_libraries (HYPRE PUBLIC OpenMP::OpenMP_C)
+# endif (HYPRE_USING_OPENMP)
 
-if (HYPRE_USING_RAJA)
-   target_link_libraries(HYPRE PUBLIC RAJA)
-endif()
+# Handled above prior to blt_add_library
+#if (HYPRE_USING_RAJA)
+#   target_link_libraries(HYPRE PUBLIC RAJA)
+#endif()
 
 if (MSVC)
   target_compile_definitions(HYPRE PRIVATE _CRT_SECURE_NO_WARNINGS)

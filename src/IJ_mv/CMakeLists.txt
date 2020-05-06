@@ -28,7 +28,7 @@ set(SRCS
 #          ${HDRS}
 #  )
 
-if(HAVE_CUDA)
+if(HYPRE_USING_CUDA)
    set(SRCS ${SRCS}
       IJMatrix_parcsr_device.c
       IJVector_parcsr_device.c)

@@ -29,7 +29,7 @@ set(SRCS
 #          ${HDRS}
 #  )
 
-if(HAVE_CUDA)
+if(HYPRE_USING_CUDA)
    set(HDRS ${HDRS}
       csr_spgemm_device.h
       )

@@ -39,7 +39,7 @@ set(SRCS
   timing.c
 )
 
-if(HAVE_CUDA)
+if(HYPRE_USING_CUDA)
    set(HDRS ${HDRS}
       hypre_cub_allocator.h
       hypre_cuda_reducer.h

@@ -20,24 +20,9 @@ set(TEST_SRCS
   ij_mv.c
 )
 
-# add_hypre_executables(TEST_SRCS)   
-cmake_minimum_required(VERSION 3.13)
-set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
-set(HYPRE_USING_CUDA_DEFINE "")
-set(HYPRE_USING_CUBLAS_DEFINE "")
-set(MEMORY_DEFINE "")
-set(CUDA_INCLUDE_DIR "")
-set(depends HYPRE)
-
-if(HAVE_CUDA)
-   list(APPEND depends cuda)
-   set(CUDA_INCLUDE_DIR   ${CUDA_TOOLKIT_ROOT_DIR}/include)
-   # we'll pickup defines from the parent scope; but external apps will need these
-   set(HYPRE_USING_CUDA_DEFINE "HYPRE_USING_CUDA")
-   set(MEMORY_DEFINE "HYPRE_USING_UNIFIED_MEMORY")
-endif ()
-
-message(STATUS "test apps depend on: ${depends}")
+set(TEST_DEPENDS HYPRE)
+list(APPEND TEST_DEPENDS ${HYPRE_DEPENDS})
+message(STATUS "Test Apps depend on: ${TEST_DEPENDS}")
 
 # do the following until we establish a macro call
 foreach(SRC IN LISTS TEST_SRCS)
@@ -46,19 +31,11 @@ foreach(SRC IN LISTS TEST_SRCS)
    blt_add_executable(
       NAME ${EXE_NAME}
       SOURCES ${SRC}
-      INCLUDES 
-        ${PROJECT_SOURCE_DIR}
-        ${CUDA_INCLUDE_DIR}
-        #  defines are already established in parent scope
-        #  just a reminder that external apps will need these
-        #DEFINES 
-        #${HYPRE_USING_CUDA_DEFINE}
-        #${HYPRE_USING_CUBLAS_DEFINE}
-        #${MEMORY_DEFINE}
       DEPENDS_ON
-        ${depends})
+      ${TEST_DEPENDS})
 
-   if(HAVE_CUDA)
+   # edit this eventually to use parent scope libraries list
+   if(HYPRE_USING_CUDA)
       target_link_libraries(
          ${EXE_NAME} PRIVATE 
          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcusparse_static.a
@@ -67,14 +44,12 @@ foreach(SRC IN LISTS TEST_SRCS)
          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas_static.a
          ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublasLt_static.a
       )
-   endif ()
-
-   #otherwise we're building with mpicc so we need -lm
-   if(NOT HAVE_CUDA)
+   else ()
       target_link_libraries(
          ${EXE_NAME} PRIVATE
          m)
-   endif ()   
+   endif ()
+
 endforeach()      
 
 # later create macros for each executable, 

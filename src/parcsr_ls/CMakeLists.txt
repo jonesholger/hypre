@@ -115,7 +115,7 @@ if (HYPRE_USING_DSUPERLU)
 endif()  
 
 
-if(HAVE_CUDA)
+if(HYPRE_USING_CUDA)
    set(SRCS ${SRCS}
       par_coarsen_device.c
       par_indepset_device.c

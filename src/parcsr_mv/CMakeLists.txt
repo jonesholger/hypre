@@ -32,7 +32,7 @@ set(SRCS
   par_csr_triplemat.c
 )
 
-if(HAVE_CUDA)
+if(HYPRE_USING_CUDA)
    set(SRCS ${SRCS}
       par_csr_matop_device.c
       par_csr_triplemat_device.c)
