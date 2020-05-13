@@ -114,7 +114,7 @@ option(HYPRE_BUILD_EXAMPLES          "Build examples" OFF)
 option(HYPRE_BUILD_TESTS             "Build tests" OFF)
 
 if(NOT ENABLE_CUDA)
-   option(HYPRE_USING_HOST_MEMORY       "Use host memory" ON)
+   set(HYPRE_USING_HOST_MEMORY True)
 endif ()
 
 
@@ -203,6 +203,13 @@ if (HYPRE_SEQUENTIAL)
   set (HYPRE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 endif ()
 
+# Set library build type
+if (HYPRE_SHARED)
+  set (BUILD_SHARED_LIBS ON CACHE INTERNAL "" FORCE)
+else ()
+  set (BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
+endif ()
+
 
 set (HYPRE_DEPENDS "")
 
@@ -216,9 +223,8 @@ if (ENABLE_OPENMP)
    list(APPEND HYPRE_DEPENDS openmp)
 endif ()
 
+set(EXPORT_INTERFACE_CUDA_LIBS "")
 if (ENABLE_CUDA)
-   #set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
-
    if (HYPRE_USING_NVTX)
       find_package(CUDA REQUIRED)
 
@@ -244,6 +250,37 @@ if (ENABLE_CUDA)
       set(HYPRE_USING_CURAND True) 
       set(HYPRE_USING_CUBLAS False)
       set(HYPRE_USING_CUDA_STREAMS False)
+
+      # set other cuda libs for interface export here
+      if(NOT HYPRE_SHARED)
+         list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libculibos.a)
+      endif ()
+
+      if(HYPRE_USING_CUSPARSE)
+         if(HYPRE_SHARED)
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_cusparse_LIBRARY})
+         else()
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcusparse_static.a)
+         endif ()
+      endif ()
+
+      if(HYPRE_USING_CURAND)
+         if(HYPRE_SHARED)
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_curand_LIBRARY})
+         else()
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand_static.a)
+         endif ()
+      endif ()
+
+      if(HYPRE_USING_CUBLAS)
+         if(HYPRE_SHARED)
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_CUBLAS_LIBRARIES})
+         else()
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas_static.a)
+            list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublasLt_static.a)
+         endif ()   
+      endif ()
+
       list(APPEND HYPRE_DEPENDS cuda)
    endif ()
 endif()
@@ -287,9 +324,6 @@ set(HYPRE_MAIN_HEADERS
   HYPREf.h
   HYPRE.h
 )
-#target_sources(HYPRE
-#  PRIVATE ${HYPRE_MAIN_HEADERS}
-#  )
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HYPRE_MAIN_HEADERS})
 
 # Headers and sources: remaining subdirectories
@@ -300,31 +334,30 @@ foreach(DIR IN LISTS HYPRE_DIRS)
   #  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/${DIR}>)
 endforeach()
 
+
 message(STATUS "HYPRE_DEPENDS: ${HYPRE_DEPENDS}")
 blt_add_library( NAME HYPRE
    SOURCES ${HYPRE_SOURCES}
   HEADERS ${HYPRE_HEADERS}
   DEPENDS_ON ${HYPRE_DEPENDS})
 
-# Temporarily just default to internal blas use and setup blas like other hypre dirs; same with lapack
-# Headers and sources: blas
-#if (HYPRE_USING_HYPRE_BLAS)
-#  add_subdirectory(blas)
-#else()
-  # Find system blas
-  #  find_package(BLAS REQUIRED)
-  #  target_link_libraries(HYPRE PUBLIC "${BLAS_LIBRARIES}")
-  #  target_compile_definitions(HYPRE PUBLIC "USE_VENDOR_BLAS")
-  #endif()
+if(HYPRE_USING_CUDA)
+   message(STATUS "EXPORT_INTERFACE_CUDA_LIBS: ${EXPORT_INTERFACE_CUDA_LIBS}")
+   target_link_libraries(HYPRE INTERFACE "${EXPORT_INTERFACE_CUDA_LIBS}")
+endif ()
 
-# Headers and sources: lapack
-#if (HYPRE_USING_HYPRE_LAPACK)
-#  add_subdirectory(lapack)
-#else()
+if (NOT HYPRE_USING_HYPRE_BLAS)
+#   #Find system blas
+   find_package(BLAS REQUIRED)
+   target_link_libraries(HYPRE PUBLIC "${BLAS_LIBRARIES}")
+   target_compile_definitions(HYPRE PUBLIC "USE_VENDOR_BLAS")
+endif()
+
+if (NOT HYPRE_USING_HYPRE_LAPACK)
   # Find system lapack
-  #  find_package(LAPACK REQUIRED)
-  #  target_link_libraries(HYPRE PUBLIC "${LAPACK_LIBRARIES}")
-  #endif()
+  find_package(LAPACK REQUIRED)
+  target_link_libraries(HYPRE PUBLIC "${LAPACK_LIBRARIES}")
+endif()
 
 # Find DSUPERLU, if requested
 if (HYPRE_USING_DSUPERLU)
@@ -352,7 +385,7 @@ if(DSUPERLU_FOUND)
 endif()
 
 # Headers and sources: remaining subdirectories
-set(HYPRE_DIRS utilities multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
+set(HYPRE_DIRS utilities blas lapack multivector krylov seq_mv parcsr_mv parcsr_block_mv distributed_matrix IJ_mv matrix_matrix distributed_ls parcsr_ls struct_mv struct_ls sstruct_mv sstruct_ls)
 foreach(DIR IN LISTS HYPRE_DIRS)
    #add_subdirectory(${DIR})
   target_include_directories(HYPRE PUBLIC
@@ -375,32 +408,11 @@ target_include_directories(HYPRE PUBLIC
   )
 
 # Set library build type
-if (HYPRE_SHARED)
-  set (BUILD_SHARED_LIBS ON CACHE INTERNAL "" FORCE)
-else ()
-  set (BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
-endif ()
-
-# Handled by BLT
-# Set MPI compile flags
-#if (NOT HYPRE_SEQUENTIAL)
-#  find_program (MPIEXEC_EXECUTABLE NAMES mpiexec mpirun)
-#  find_package (MPI REQUIRED)
-  #  target_link_libraries (HYPRE PUBLIC MPI::MPI_C)
-  #  target_link_libraries (HYPRE PUBLIC MPI::MPI_CXX)
-  #endif (NOT HYPRE_SEQUENTIAL)
-
-# Handled by BLT  
-# Set OpenMP compile flags
-#if (HYPRE_USING_OPENMP)
-#  find_package (OpenMP REQUIRED)
-#  target_link_libraries (HYPRE PUBLIC OpenMP::OpenMP_C)
-# endif (HYPRE_USING_OPENMP)
-
-# Handled above prior to blt_add_library
-#if (HYPRE_USING_RAJA)
-#   target_link_libraries(HYPRE PUBLIC RAJA)
-#endif()
+#if (HYPRE_SHARED)
+#  set (BUILD_SHARED_LIBS ON CACHE INTERNAL "" FORCE)
+#else ()
+#  set (BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
+#endif ()
 
 if (MSVC)
   target_compile_definitions(HYPRE PRIVATE _CRT_SECURE_NO_WARNINGS)
