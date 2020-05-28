@@ -371,16 +371,16 @@ hypreDevice_CsrRowPtrsToIndicesWithRowNum(HYPRE_Int nrows, HYPRE_Int nnz, HYPRE_
 
 struct hypre_empty_row_functor
 {
-  /* typedef bool result_type; */
+   /* typedef bool result_type; */
 
-  __device__
-  bool operator()(const thrust::tuple<HYPRE_Int, HYPRE_Int>& t) const
-  {
-    const HYPRE_Int a = thrust::get<0>(t);
-    const HYPRE_Int b = thrust::get<1>(t);
+   __device__
+   bool operator()(const thrust::tuple<HYPRE_Int, HYPRE_Int>& t) const
+   {
+      const HYPRE_Int a = thrust::get<0>(t);
+      const HYPRE_Int b = thrust::get<1>(t);
 
-    return a != b;
-  }
+      return a != b;
+   }
 };
 
 HYPRE_Int*
@@ -553,8 +553,9 @@ hypreDevice_GenScatterAdd(HYPRE_Real *x, HYPRE_Int ny, HYPRE_Int *map, HYPRE_Rea
 }
 
 /* x[map[i]] = v */
+template <typename T>
 __global__ void
-hypreCUDAKernel_ScatterConstant(HYPRE_Int *x, HYPRE_Int n, HYPRE_Int *map, HYPRE_Int v)
+hypreCUDAKernel_ScatterConstant(T *x, HYPRE_Int n, HYPRE_Int *map, T v)
 {
    HYPRE_Int global_thread_id = hypre_cuda_get_grid_thread_id<1,1>();
 
@@ -567,8 +568,9 @@ hypreCUDAKernel_ScatterConstant(HYPRE_Int *x, HYPRE_Int n, HYPRE_Int *map, HYPRE
 /* x[map[i]] = v
  * n is length of map
  * TODO: thrust? */
+template <typename T>
 HYPRE_Int
-hypreDevice_ScatterConstant(HYPRE_Int *x, HYPRE_Int n, HYPRE_Int *map, HYPRE_Int v)
+hypreDevice_ScatterConstant(T *x, HYPRE_Int n, HYPRE_Int *map, T v)
 {
    /* trivial case */
    if (n <= 0)
@@ -583,6 +585,9 @@ hypreDevice_ScatterConstant(HYPRE_Int *x, HYPRE_Int n, HYPRE_Int *map, HYPRE_Int
 
    return hypre_error_flag;
 }
+
+template HYPRE_Int hypreDevice_ScatterConstant(HYPRE_Int     *x, HYPRE_Int n, HYPRE_Int *map, HYPRE_Int     v);
+template HYPRE_Int hypreDevice_ScatterConstant(HYPRE_Complex *x, HYPRE_Int n, HYPRE_Int *map, HYPRE_Complex v);
 
 __global__ void
 hypreCUDAKernel_IVAXPY(HYPRE_Int n, HYPRE_Complex *a, HYPRE_Complex *x, HYPRE_Complex *y)
