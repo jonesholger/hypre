@@ -207,9 +207,13 @@ hypre_AuxParCSRMatrixInitialize_v2( hypre_AuxParCSRMatrix *matrix, HYPRE_MemoryL
 }
 
 HYPRE_Int
-hypre_AuxParCSRMatrixInitialize( hypre_AuxParCSRMatrix *matrix)
+hypre_AuxParCSRMatrixInitialize(hypre_AuxParCSRMatrix *matrix)
 {
-   return hypre_AuxParCSRMatrixInitialize_v2(matrix, hypre_AuxParCSRMatrixMemoryLocation(matrix));
+   if (matrix)
+   {
+      return hypre_AuxParCSRMatrixInitialize_v2(matrix, hypre_AuxParCSRMatrixMemoryLocation(matrix));
+   }
+
+   return -2;
 }
 
-   
