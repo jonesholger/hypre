@@ -29,6 +29,7 @@ cmake \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=On \
   -DCMAKE_VERBOSE_MAKEFILE=On \
   -DENABLE_CUDA=On \
+  -DENABLE_OPENMP=Off \
   -DCUDA_TOOLKIT_ROOT_DIR=/usr/tce/packages/cuda/cuda-9.2.148 \
   -DCMAKE_CUDA_COMPILER=/usr/tce/packages/cuda/cuda-9.2.148/bin/nvcc \
   -DCUDA_ARCH=sm_70 \
