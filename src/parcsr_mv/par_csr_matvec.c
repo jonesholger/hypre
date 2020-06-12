@@ -10,8 +10,31 @@
  * Matvec functions for hypre_CSRMatrix class.
  *
  *****************************************************************************/
-
 #include "_hypre_parcsr_mv.h"
+
+void hypre_PrintMemoryLocation(hypre_MemoryLocation location)
+{
+   switch(location) {
+      
+      case hypre_MEMORY_UNDEFINED:
+         fprintf(stderr,"hypre_MEMORY_UNDEFINED\n");
+         break;
+      case hypre_MEMORY_HOST:
+         fprintf(stderr,"hypre_MEMORY_HOST\n");
+         break;
+      case hypre_MEMORY_HOST_PINNED:
+         fprintf(stderr,"hypre_MEMORY_HOST_PINNED\n");
+         break;
+      case hypre_MEMORY_DEVICE:
+         fprintf(stderr,"hypre_MEMORY_DEVICE\n");
+         break;
+      case hypre_MEMORY_UNIFIED:
+         fprintf(stderr,"hypre_MEMORY_UNIFIED\n");
+         break;
+   }
+}
+
+
 /*--------------------------------------------------------------------------
  * hypre_ParCSRMatrixMatvec
  *--------------------------------------------------------------------------*/
@@ -83,8 +106,6 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
    {
       ierr = 13;
    }
-
-   fprintf(stderr,"x_size = %d\n",x_size);
 
    hypre_assert( hypre_VectorNumVectors(b_local) == num_vectors );
    hypre_assert( hypre_VectorNumVectors(y_local) == num_vectors );
@@ -179,12 +200,12 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
                                                                 hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                                                                 HYPRE_MEMORY_DEVICE);
             */
-           // hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
-           //                                                      hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
-           //                                                      hypre_MEMORY_DEVICE);
             hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
                                                                  hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
-                                                                 hypre_MEMORY_HOST_PINNED);
+                                                                 hypre_MEMORY_DEVICE);
+            //hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
+            //                                                     hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+            //                                                     hypre_MEMORY_HOST_PINNED);
          }
          x_buf_data[0] = hypre_ParCSRCommPkgBufData(comm_pkg);
          continue;
@@ -197,13 +218,16 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
          continue;
 #endif
       }
+#if 1
+      x_buf_data[jv] = hypre_TAlloc(HYPRE_Complex,
+                                    hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+                                    HYPRE_MEMORY_DEVICE);
 
-      //x_buf_data[jv] = hypre_TAlloc(HYPRE_Complex,
-      //                              hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
-      //                              HYPRE_MEMORY_DEVICE);
+#else
       x_buf_data[jv] = _hypre_TAlloc(HYPRE_Complex,
                                     hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                                     hypre_MEMORY_HOST_PINNED);
+#endif
    }
 
    /* The assert is because the following loop only works for 'column'
@@ -230,20 +254,31 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
       /* if on device, no need to Sync: send_data is on device memory */
 #if defined(HYPRE_USING_CUDA)
       /* pack send data on device */
-#if 0
+#if 1
       HYPRE_THRUST_CALL( gather,
                          hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg),
                          hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg) +
                          hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                          locl_data,
                          send_data );
-#endif /* pack send data on device */
-#if 1
+#else /* pack send data on device */
       HYPRE_Int i;
       HYPRE_Int *device_send_map_elmts = hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg);
       HYPRE_Int start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, 0);
       HYPRE_Int end   = hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends);
-
+      hypre_MemoryLocation testMemLoc;
+      hypre_GetPointerLocation(locl_data,&testMemLoc);
+      fprintf(stderr,"Location of locl_data: ");
+      hypre_PrintMemoryLocation(testMemLoc);
+      
+      hypre_GetPointerLocation(device_send_map_elmts,&testMemLoc);
+      fprintf(stderr,"Location of device_send_map_elmts: ");
+      hypre_PrintMemoryLocation(testMemLoc);
+      
+      hypre_GetPointerLocation(send_data,&testMemLoc);
+      fprintf(stderr,"Location of send_data: ");
+      hypre_PrintMemoryLocation(testMemLoc);
+      
       for (i = start; i < end; i++)
       {
          send_data[i] = locl_data[device_send_map_elmts[i]];
