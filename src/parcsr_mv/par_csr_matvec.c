@@ -12,6 +12,10 @@
  *****************************************************************************/
 #include "_hypre_parcsr_mv.h"
 
+#include <thrust/gather.h>
+#include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
+
 void hypre_PrintMemoryLocation(hypre_MemoryLocation location)
 {
    switch(location) {
@@ -166,7 +170,7 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
    {
       if (!hypre_ParCSRCommPkgTmpData(comm_pkg))
       {
-         /* hypre_ParCSRCommPkgTmpData(comm_pkg) = hypre_TAlloc(HYPRE_Complex, num_cols_offd, HYPRE_MEMORY_DEVICE); */
+         // hypre_ParCSRCommPkgTmpData(comm_pkg) = hypre_TAlloc(HYPRE_Complex, num_cols_offd, HYPRE_MEMORY_DEVICE); 
          hypre_ParCSRCommPkgTmpData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex, num_cols_offd, hypre_MEMORY_DEVICE);
       }
       hypre_VectorData(x_tmp) = hypre_ParCSRCommPkgTmpData(comm_pkg);
@@ -188,6 +192,7 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
    /* x_buff_data */
    x_buf_data = hypre_CTAlloc(HYPRE_Complex*, num_vectors, HYPRE_MEMORY_HOST);
 
+
    for (jv = 0; jv < num_vectors; ++jv)
    {
 #if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_DEVICE_OPENMP)
@@ -195,17 +200,24 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
       {
          if (!hypre_ParCSRCommPkgBufData(comm_pkg))
          {
-            /*
+          /* 
             hypre_ParCSRCommPkgBufData(comm_pkg) = hypre_TAlloc(HYPRE_Complex,
                                                                 hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                                                                 HYPRE_MEMORY_DEVICE);
-            */
+            
+           */
+            
             hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
                                                                  hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                                                                  hypre_MEMORY_DEVICE);
-            //hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
-            //                                                     hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
-            //                                                     hypre_MEMORY_HOST_PINNED);
+            
+
+            /*
+            fprintf(stderr,"allocating for x_buf_data[jv] : %d\n",hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends));
+            hypre_ParCSRCommPkgBufData(comm_pkg) = _hypre_TAlloc(HYPRE_Complex,
+                                                                 hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+                                                                 hypre_MEMORY_HOST_PINNED);
+            */
          }
          x_buf_data[0] = hypre_ParCSRCommPkgBufData(comm_pkg);
          continue;
@@ -218,6 +230,7 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
          continue;
 #endif
       }
+
 #if 1
       x_buf_data[jv] = hypre_TAlloc(HYPRE_Complex,
                                     hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
@@ -248,6 +261,7 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
 
    for (jv = 0; jv < num_vectors; ++jv)
    {
+      //fprintf(stderr,"num_vectors %d\n",num_vectors);
       HYPRE_Complex *send_data = (HYPRE_Complex *) x_buf_data[jv];
       HYPRE_Complex *locl_data = x_local_data + jv * vecstride;
 
@@ -255,12 +269,23 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
 #if defined(HYPRE_USING_CUDA)
       /* pack send data on device */
 #if 1
+
       HYPRE_THRUST_CALL( gather,
                          hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg),
                          hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg) +
                          hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
                          locl_data,
                          send_data );
+
+/*
+      thrust::gather(thrust::host,
+            hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg),
+            hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg) +
+            hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+            locl_data,
+            send_data );
+
+*/
 #else /* pack send data on device */
       HYPRE_Int i;
       HYPRE_Int *device_send_map_elmts = hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg);
@@ -268,17 +293,29 @@ hypre_ParCSRMatrixMatvecOutOfPlace( HYPRE_Complex       alpha,
       HYPRE_Int end   = hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends);
       hypre_MemoryLocation testMemLoc;
       hypre_GetPointerLocation(locl_data,&testMemLoc);
-      fprintf(stderr,"Location of locl_data: ");
+      fprintf(stderr,"Location of locl_data %p: ",locl_data);
       hypre_PrintMemoryLocation(testMemLoc);
       
       hypre_GetPointerLocation(device_send_map_elmts,&testMemLoc);
-      fprintf(stderr,"Location of device_send_map_elmts: ");
+      fprintf(stderr,"Location of device_send_map_elmts %p: ",device_send_map_elmts);
       hypre_PrintMemoryLocation(testMemLoc);
       
       hypre_GetPointerLocation(send_data,&testMemLoc);
-      fprintf(stderr,"Location of send_data: ");
+      fprintf(stderr,"Location of send_data %p: ",send_data);
       hypre_PrintMemoryLocation(testMemLoc);
       
+      hypre_GetPointerLocation(hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg),&testMemLoc);
+      fprintf(stderr,"Location of hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg) %p: ",hypre_ParCSRCommPkgDeviceSendMapElmts(comm_pkg));
+      hypre_PrintMemoryLocation(testMemLoc);
+      
+      hypre_GetPointerLocation(x_tmp,&testMemLoc);
+      fprintf(stderr,"Location of x_tmp %p: ",x_tmp);
+      hypre_PrintMemoryLocation(testMemLoc);
+
+      hypre_GetPointerLocation(x_tmp_data,&testMemLoc);
+      fprintf(stderr,"Location of x_tmp_data %p: ",x_tmp_data);
+      hypre_PrintMemoryLocation(testMemLoc);
+
       for (i = start; i < end; i++)
       {
          send_data[i] = locl_data[device_send_map_elmts[i]];
