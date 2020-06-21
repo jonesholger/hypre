@@ -11,33 +11,7 @@
  *
  *****************************************************************************/
 #include "_hypre_parcsr_mv.h"
-
-#include <thrust/gather.h>
-#include <thrust/device_vector.h>
-#include <thrust/execution_policy.h>
-
-void hypre_PrintMemoryLocation(hypre_MemoryLocation location)
-{
-   switch(location) {
-      
-      case hypre_MEMORY_UNDEFINED:
-         fprintf(stderr,"hypre_MEMORY_UNDEFINED\n");
-         break;
-      case hypre_MEMORY_HOST:
-         fprintf(stderr,"hypre_MEMORY_HOST\n");
-         break;
-      case hypre_MEMORY_HOST_PINNED:
-         fprintf(stderr,"hypre_MEMORY_HOST_PINNED\n");
-         break;
-      case hypre_MEMORY_DEVICE:
-         fprintf(stderr,"hypre_MEMORY_DEVICE\n");
-         break;
-      case hypre_MEMORY_UNIFIED:
-         fprintf(stderr,"hypre_MEMORY_UNIFIED\n");
-         break;
-   }
-}
-
+#include "_hypre_utilities.hpp" //RL: TODO par_csr_matvec_device.c, include cuda there
 
 /*--------------------------------------------------------------------------
  * hypre_ParCSRMatrixMatvec
