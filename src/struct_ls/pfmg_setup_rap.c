@@ -128,7 +128,7 @@ hypre_PFMGSetupRAPOp( hypre_StructMatrix *R,
       Ac_tmp = hypre_PFMGCreateRAPOp(R, A, P, hypre_StructMatrixGrid(Ac), cdir, rap_type);
       hypre_StructMatrixSymmetric(Ac_tmp) = hypre_StructMatrixSymmetric(Ac);
       hypre_StructMatrixConstantCoefficient(Ac_tmp) = hypre_StructMatrixConstantCoefficient(Ac);
-      hypre_StructGridDataLocation(hypre_StructMatrixGrid(Ac)) = data_location_A;
+      hypre_StructGridDataLocation(hypre_StructMatrixGrid(Ac)) = (HYPRE_MemoryLocation)data_location_A;
       HYPRE_StructMatrixInitialize(Ac_tmp);
    }
    else
@@ -218,7 +218,7 @@ hypre_PFMGSetupRAPOp( hypre_StructMatrix *R,
      }
 
       hypre_HandleStructExecPolicy(hypre_handle()) = data_location_Ac == HYPRE_MEMORY_DEVICE ? HYPRE_EXEC_DEVICE : HYPRE_EXEC_HOST;
-      hypre_StructGridDataLocation(hypre_StructMatrixGrid(Ac)) = data_location_Ac;
+      hypre_StructGridDataLocation(hypre_StructMatrixGrid(Ac)) = (HYPRE_MemoryLocation)data_location_Ac;
       hypre_StructMatrixAssemble(Ac);
       hypre_HandleStructExecPolicy(hypre_handle()) = data_location_A == HYPRE_MEMORY_DEVICE ? HYPRE_EXEC_DEVICE : HYPRE_EXEC_HOST;
       hypre_StructMatrixDestroy(Ac_tmp);

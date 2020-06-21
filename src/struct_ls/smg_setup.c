@@ -161,7 +161,7 @@ hypre_SMGSetup( void               *smg_vdata,
       /* build the coarse grid */
       hypre_StructCoarsen(grid_l[l], cindex, stride, 1, &grid_l[l+1]);
 #if defined(HYPRE_USING_CUDA)
-      hypre_StructGridDataLocation(PT_grid_l[l+1]) = data_location;
+      hypre_StructGridDataLocation(PT_grid_l[l+1]) = (HYPRE_MemoryLocation)data_location;
       if (device_level == -1 && num_level_GPU > 0)
       {
          max_box_size = hypre_StructGridGetMaxBoxSize(grid_l[l+1]);
@@ -179,7 +179,7 @@ hypre_SMGSetup( void               *smg_vdata,
          data_location = HYPRE_MEMORY_HOST;
       }
 
-      hypre_StructGridDataLocation(grid_l[l+1]) = data_location;
+      hypre_StructGridDataLocation(grid_l[l+1]) =(HYPRE_MemoryLocation)data_location;
 #endif
    }
    num_levels = l + 1;

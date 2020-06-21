@@ -55,7 +55,7 @@ set(ENABLE_CUDA Off CACHE STRING "Enable CUDA")
 set(ENABLE_MPI On CACHE STRING "Enable MPI.")
 set(ENABLE_TESTS On CACHE STRING "Enable Tests.")
 set(ENABLE_DOCS Off CACHE STRING "Enable Docs.")
-set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
+set(BLT_CXX_STD "c++11" CACHE STRING "Version of C++ standard")
 set(gtest_disable_pthreads ON CACHE STRING "")
 option(ENABLE_RAJA "Enable RAJA" Off)
 
