@@ -103,6 +103,7 @@ option(HYPRE_ENABLE_HYPRE_LAPACK     "Use internal LAPACK library" ON)
 option(HYPRE_ENABLE_PERSISTENT_COMM  "Use persistent communication" OFF)
 option(HYPRE_ENABLE_GLOBAL_PARTITION "Use global partitioning" OFF)
 option(HYPRE_ENABLE_FEI              "Use FEI" OFF) # TODO: Add this cmake feature
+option(HYPRE_USING_NVTX              "Use NVTX ranges" OFF)
 option(HYPRE_WITH_MPI                "Compile with MPI" ON)
 option(HYPRE_WITH_OPENMP             "Use OpenMP" OFF)
 option(HYPRE_WITH_HOPSCOTCH          "Use hopscotch hashing with OpenMP" OFF)
@@ -178,6 +179,7 @@ if (HYPRE_WITH_HOPSCOTCH)
   set (HYPRE_HOPSCOTCH ON CACHE BOOL "" FORCE)
 endif()
 
+set (HYPRE_USING_DSUPERLU OFF)
 if (HYPRE_WITH_DSUPERLU)
   set (HYPRE_USING_DSUPERLU ON CACHE BOOL "" FORCE)
   set (HYPRE_USING_HYPRE_BLAS OFF CACHE BOOL "" FORCE)
@@ -243,19 +245,15 @@ if (ENABLE_CUDA)
 
    if (CUDA_FOUND)
       set_source_files_properties(${cuda_sources} PROPERTIES LANGUAGE CUDA)
-      set (HYPRE_USING_CUDA True)
+      set (HYPRE_USING_CUDA On)
       # setup defaults until we fully define configuration matrix
-      set(HYPRE_USING_UNIFIED_MEMORY True)
-      set(HYPRE_USING_CUSPARSE True)
-      set(HYPRE_USING_CURAND True) 
-      set(HYPRE_USING_CUBLAS False)
-      set(HYPRE_USING_CUDA_STREAMS False)
+      set(HYPRE_USING_UNIFIED_MEMORY On)
+      set(HYPRE_USING_CUSPARSE On)
+      set(HYPRE_USING_CURAND On) 
+      set(HYPRE_USING_CUBLAS Off)
+      set(HYPRE_USING_CUDA_STREAMS Off)
 
       # set other cuda libs for interface export here
-      if(NOT HYPRE_SHARED)
-         list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libculibos.a)
-      endif ()
-
       if(HYPRE_USING_CUSPARSE)
          if(HYPRE_SHARED)
             list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_cusparse_LIBRARY})
@@ -281,12 +279,18 @@ if (ENABLE_CUDA)
          endif ()   
       endif ()
 
+      if(NOT HYPRE_SHARED)
+         list(APPEND EXPORT_INTERFACE_CUDA_LIBS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libculibos.a)
+      endif ()
+
+
       list(APPEND HYPRE_DEPENDS cuda)
    endif ()
 endif()
 
 
 # RAJA
+set(HYPRE_USING_RAJA Off)
 if (ENABLE_RAJA)
   find_package(RAJA REQUIRED)
 
@@ -300,7 +304,7 @@ if (ENABLE_RAJA)
   endif ()
 
   if (RAJA_FOUND)
-     set (HYPRE_USING_RAJA True)
+     set (HYPRE_USING_RAJA On)
 
     blt_register_library(
       NAME RAJA
@@ -460,8 +464,31 @@ install (TARGETS HYPRE
 install (FILES ${HYPRE_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 include (CMakePackageConfigHelpers)
+# Set up some paths, preserve existing cache values (if present)
+set(HYPRE_INSTALL_INCLUDE_DIR "include" CACHE STRING "")
+set(HYPRE_INSTALL_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/HYPRE" CACHE STRING "")
+set(HYPRE_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "")
+set(HYPRE_INSTALL_BIN_DIR "bin" CACHE STRING "")
+set(HYPRE_INSTALL_CMAKE_MODULE_DIR "${HYPRE_INSTALL_CONFIG_DIR}" CACHE STRING "")
+
+##------------------------------------------------------------------------------
+## convert_to_native_escaped_file_path( path output )
+##
+## This macro converts a cmake path to a platform specific string literal
+## usable in C++.  (For example, on windows C:/Path will be come C:\\Path)
+##------------------------------------------------------------------------------
+
+macro(convert_to_native_escaped_file_path path output)
+    file(TO_NATIVE_PATH ${path} ${output})
+    string(REPLACE "\\" "\\\\"  ${output} "${${output}}")
+endmacro()
+
+convert_to_native_escaped_file_path(${CMAKE_INSTALL_PREFIX} HYPRE_INSTALL_PREFIX)
+set(HYPRE_INSTALL_PREFIX ${HYPRE_INSTALL_PREFIX} CACHE STRING "" FORCE)
+
+
 write_basic_package_version_file (
-  HYPREConfigVersion.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/HYPREConfigVersion.cmake
   VERSION ${PACKAGE_VERSION}
   COMPATIBILITY SameMajorVersion
   )
@@ -469,18 +496,27 @@ write_basic_package_version_file (
 install (EXPORT HYPRETargets
   FILE HYPRETargets.cmake
   NAMESPACE HYPRE::
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/HYPRE"
+  DESTINATION ${HYPRE_INSTALL_CONFIG_DIR}
   )
 
 configure_package_config_file (
-  config/HYPREConfig.cmake.in HYPREConfig.cmake
-  INSTALL_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/HYPREConfig.cmake"
+  ${CMAKE_CURRENT_SOURCE_DIR}/config/HYPREConfig.cmake.in 
+  ${CMAKE_CURRENT_BINARY_DIR}/HYPREConfig.cmake
+  INSTALL_DESTINATION 
+  ${HYPRE_INSTALL_CONFIG_DIR}  
+  PATH_VARS
+     HYPRE_INSTALL_INCLUDE_DIR
+     HYPRE_INSTALL_LIB_DIR
+     HYPRE_INSTALL_BIN_DIR
+     HYPRE_INSTALL_CMAKE_MODULE_DIR
   )
+
 install (
   FILES
       "${CMAKE_CURRENT_BINARY_DIR}/HYPREConfig.cmake"
       "${CMAKE_CURRENT_BINARY_DIR}/HYPREConfigVersion.cmake"
-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/HYPRE"
+  DESTINATION 
+   ${HYPRE_INSTALL_CMAKE_MODULE_DIR} 
   )
 
 export (EXPORT HYPRETargets
@@ -547,4 +583,4 @@ function(print_target_properties tgt)
     endforeach(prop)
 endfunction(print_target_properties)
 
-#print_target_properties(HYPRE)
+print_target_properties(HYPRE)

@@ -1,15 +1,5 @@
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/thirdparty/")
 
-#if (ENABLE_CUDA)
-#  if (NOT ENABLE_RAJA)
-#    message(FATAL_ERROR "CUDA support requires RAJA")
-#  endif ()
-
-#  if (NOT ENABLE_UMPIRE)
-#    message(FATAL_ERROR "CUDA support requires UMPIRE")
-#  endif ()
-#endif ()
-
 # MPI is setup by BLT
 if (MPI_FOUND)
   set(HAVE_MPI True)
